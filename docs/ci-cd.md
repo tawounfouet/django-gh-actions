@@ -113,3 +113,22 @@ La bonne adresse à utiliser pour accéder à ton Mac depuis ton réseau local e
 192.168.1.99
 ```
 Utilise celle-ci pour les connexions SSH, transferts de fichiers, etc., depuis d'autres appareils sur le même réseau.
+
+
+### Clone the repository in the VM
+
+```sh
+multipass shell devops-dev-vm
+
+# create ssh key in the VM
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa
+
+
+# copy vm public key to github
+#ls ~/.ssh
+ls -la /home/ubuntu/.ssh/
+cat ~/.ssh/id_rsa.pub
+
+# restart the VM
+multipass restart devops-dev-vm
+#cd ~/.ssh

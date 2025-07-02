@@ -172,7 +172,7 @@ python3 -m venv /var/www/django-app/venv
 
 # Clone du repository
 cd /var/www/django-app
-git clone https://github.com/your-username/django-gh-actions.git app
+git clone https://github.com/tawounfouet/django-gh-actions.git app
 cd app
 
 # Installation des dépendances
@@ -186,6 +186,8 @@ cd app
 #### d. Configuration de Nginx
 
 ```bash
+ls /etc/nginx/sites-available/
+
 # Création du fichier de configuration Nginx
 sudo tee /etc/nginx/sites-available/django-app <<EOF
 server {
@@ -204,6 +206,10 @@ server {
 }
 EOF
 
+
+# c
+cat /etc/nginx/sites-available/django-app
+
 # Activation du site
 sudo ln -s /etc/nginx/sites-available/django-app /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
@@ -213,6 +219,8 @@ sudo systemctl restart nginx
 #### e. Configuration de Supervisor
 
 ```bash
+ls /etc/supervisor/conf.d/
+
 # Création du fichier de configuration Supervisor
 sudo tee /etc/supervisor/conf.d/django-app.conf <<EOF
 [program:django-app]
@@ -224,6 +232,10 @@ autorestart=true
 redirect_stderr=true
 stdout_logfile=/var/www/django-app/logs/gunicorn.log
 EOF
+
+
+
+# cat /etc/supervisor/conf.d/django-app.conf
 
 # Création du dossier de logs
 mkdir -p /var/www/django-app/logs
