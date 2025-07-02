@@ -11,6 +11,7 @@ git init
 
 # Install django 4
 pip install django==4.2.16
+pip freeze > requirements.txt
 
 # setup django project
 django-admin startproject core .
