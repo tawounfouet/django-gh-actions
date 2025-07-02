@@ -1,5 +1,16 @@
+# Virtual environments
 .venv
 venv/
 VENV/
+
+# Python cache
 __pycache__/
 *.pyc
+
+# Ignore all __pycache__ and .pyc files in any subdirectory (including future apps)
+**/__pycache__/
+**/*.pyc
+
+# Optionally, ignore all migration files' pyc in any app
+**/migrations/__pycache__/
+**/migrations/*.pyc
