@@ -1,4 +1,4 @@
-name : Build, Test and Deploy Django Application
+name: Build, Test and Deploy Django Application
 
 on:
   push:
@@ -9,10 +9,9 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Every Sunday at midnight UTC
 
-
 jobs:
-  build_and_test:
-    runs-on: ubuntu-latest  
+  build:
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -29,17 +28,49 @@ jobs:
 
     - name: Run linting
       run: echo "Linting is skipped for this run."
+    
+    # Cache dependencies for next jobs
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
 
+  test:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+      
+    # Restore cached dependencies
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+      
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+      
     - name: Run tests
-      run : python manage.py test
-
-
+      run: python manage.py test
 
   deploy:
-    needs: [build_and_test]
-    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: [test]
     runs-on: ubuntu-latest
-
+    if: github.ref == 'refs/heads/main'  # Only deploy from main branch
     steps:
     - name: Checkout code
       # uses: actions/checkout@v3
