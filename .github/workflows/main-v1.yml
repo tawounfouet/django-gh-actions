@@ -1,0 +1,120 @@
+name: CI/CD Pipeline
+# This workflow is designed to run on pushes, pull requests, and scheduled events.
+# It includes steps for building, testing, and deploying a Django application using GitHub Actions.
+# The deployment step uses SSH to connect to a remote server and perform the necessary actions.
+# The workflow also includes caching for Python dependencies to speed up the process.
+# The linting step uses flake8 to check the code for style issues.
+# The test step runs Django tests with coverage reporting.
+# The deploy step is conditional, only running when the main branch is updated.
+# The workflow is triggered on pushes to the main branch, pull requests targeting the main branch,
+# manual dispatch, and a weekly schedule (every Sunday at midnight UTC).
+# The workflow consists of three jobs: build, test, and deploy.
+# Each job runs on an Ubuntu environment and includes steps for checking out the code,
+
+on:
+  push:
+    branches: [ 'main' ]
+  pull_request:
+    branches: [ 'main' ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'  # Every Sunday at midnight UTC
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install flake8
+
+    - name: Run linting
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+    # Cache dependencies for next jobs
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+  test:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+      
+    # Restore cached dependencies
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+      
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install coverage
+      
+    - name: Run tests with coverage
+      run: |
+        coverage run --source='.' manage.py test
+        coverage report
+
+  deploy:
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # Only deploy from main branch
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Extract commit hash
+      id: vars
+      run: echo "commit=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Add host key
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -t rsa ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to server
+      env:
+        SSH_USER: ${{ secrets.SSH_USER }}
+        SSH_HOST: ${{ secrets.SSH_HOST }}
+        COMMIT_HASH: ${{ steps.vars.outputs.commit }}
+      run: |
+        ssh $SSH_USER@$SSH_HOST "cd /var/www/django-app/app && \
+        git pull && \
+        /var/www/django-app/venv/bin/pip install -r requirements.txt && \
+        /var/www/django-app/venv/bin/python manage.py migrate && \
+        /var/www/django-app/venv/bin/python manage.py collectstatic --noinput && \
+        sudo supervisorctl restart django-app && \
+        echo 'Deployed commit: $COMMIT_HASH'"

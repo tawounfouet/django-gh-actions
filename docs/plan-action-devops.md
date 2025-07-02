@@ -247,6 +247,9 @@ mkdir -p /var/www/django-app/logs
 sudo supervisorctl reread
 sudo supervisorctl update
 sudo supervisorctl start django-app
+
+# restarting the service
+sudo supervisorctl restart django-app
 ```
 
 ### 3. Configuration de GitHub Actions
