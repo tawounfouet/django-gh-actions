@@ -128,6 +128,7 @@ ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa
 #ls ~/.ssh
 ls -la /home/ubuntu/.ssh/
 cat ~/.ssh/id_rsa.pub
+cat ~/.ssh/id_rsa
 
 # restart the VM
 multipass restart devops-dev-vm

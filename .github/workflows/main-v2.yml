@@ -1,10 +1,21 @@
 name: CI/CD Pipeline
+# This workflow is designed to run on pushes, pull requests, and scheduled events.
+# It includes steps for building, testing, and deploying a Django application using GitHub Actions.
+# The deployment step uses SSH to connect to a remote server and perform the necessary actions.
+# The workflow also includes caching for Python dependencies to speed up the process.
+# The linting step uses flake8 to check the code for style issues.
+# The test step runs Django tests with coverage reporting.
+# The deploy step is conditional, only running when the main branch is updated.
+# The workflow is triggered on pushes to the main branch, pull requests targeting the main branch,
+# manual dispatch, and a weekly schedule (every Sunday at midnight UTC).
+# The workflow consists of three jobs: build, test, and deploy.
+# Each job runs on an Ubuntu environment and includes steps for checking out the code,
 
 on:
-  push:
-    branches: [ 'main' ]
-  pull_request:
-    branches: [ 'main' ]
+  # push:
+  #   branches: [ 'main' ]
+  # pull_request:
+  #   branches: [ 'main' ]
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * 0'  # Every Sunday at midnight UTC

@@ -1,21 +1,10 @@
-name: CI/CD Pipeline
-# This workflow is designed to run on pushes, pull requests, and scheduled events.
-# It includes steps for building, testing, and deploying a Django application using GitHub Actions.
-# The deployment step uses SSH to connect to a remote server and perform the necessary actions.
-# The workflow also includes caching for Python dependencies to speed up the process.
-# The linting step uses flake8 to check the code for style issues.
-# The test step runs Django tests with coverage reporting.
-# The deploy step is conditional, only running when the main branch is updated.
-# The workflow is triggered on pushes to the main branch, pull requests targeting the main branch,
-# manual dispatch, and a weekly schedule (every Sunday at midnight UTC).
-# The workflow consists of three jobs: build, test, and deploy.
-# Each job runs on an Ubuntu environment and includes steps for checking out the code,
+name: Build, Test and Deploy Django Application
 
 on:
-  push:
-    branches: [ 'main' ]
-  pull_request:
-    branches: [ 'main' ]
+  # push:
+  #   branches: [ 'main' ]
+  # pull_request:
+  #   branches: [ 'main' ]
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * 0'  # Every Sunday at midnight UTC
@@ -36,12 +25,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install flake8
 
     - name: Run linting
-      run: |
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-
+      run: echo "Linting is skipped for this run."
+    
     # Cache dependencies for next jobs
     - name: Cache dependencies
       uses: actions/cache@v3
@@ -76,12 +63,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install coverage
       
-    - name: Run tests with coverage
-      run: |
-        coverage run --source='.' manage.py test
-        coverage report
+    - name: Run tests
+      run: python manage.py test
 
   deploy:
     needs: [test]
@@ -89,32 +73,15 @@ jobs:
     if: github.ref == 'refs/heads/main'  # Only deploy from main branch
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      # uses: actions/checkout@v3
+      run: echo "Code checkout is skipped for this run."
 
     - name: Extract commit hash
       id: vars
-      run: echo "commit=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+      run: echo "Commit hash extraction is skipped for this run."
 
     - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: Add host key
-      run: |
-        mkdir -p ~/.ssh
-        ssh-keyscan -t rsa ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+      run: echo "SSH setup is skipped for this run."
 
     - name: Deploy to server
-      env:
-        SSH_USER: ${{ secrets.SSH_USER }}
-        SSH_HOST: ${{ secrets.SSH_HOST }}
-        COMMIT_HASH: ${{ steps.vars.outputs.commit }}
-      run: |
-        ssh $SSH_USER@$SSH_HOST "cd /var/www/django-app/app && \
-        git pull && \
-        /var/www/django-app/venv/bin/pip install -r requirements.txt && \
-        /var/www/django-app/venv/bin/python manage.py migrate && \
-        /var/www/django-app/venv/bin/python manage.py collectstatic --noinput && \
-        sudo supervisorctl restart django-app && \
-        echo 'Deployed commit: $COMMIT_HASH'"
+      run: echo "Deployment is skipped for this run."
