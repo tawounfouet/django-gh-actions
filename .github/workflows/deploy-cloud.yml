@@ -86,14 +86,14 @@ jobs:
           set -e
           
           echo "📂 Navigating to application directory..."
-          cd /var/www/django-app/app
+          cd /var/www/django-devops-app/app
           
           echo "📥 Pulling latest changes..."
           git fetch origin
           git reset --hard origin/main
           
           echo "🐍 Activating virtual environment..."
-          source /var/www/django-app/venv/bin/activate
+          source /var/www/django-devops-app/venv/bin/activate
           
           echo "📦 Installing/updating dependencies..."
           pip install -r requirements.txt
@@ -105,7 +105,7 @@ jobs:
           python manage.py collectstatic --noinput
           
           echo "🔄 Restarting application services..."
-          sudo supervisorctl restart django-app
+          sudo supervisorctl restart django-devops-app
           sudo systemctl reload nginx
           
           echo "✅ Deployment completed successfully!"

@@ -2,6 +2,7 @@ from django.db import models
 
 # Create your models here.
 
+
 class Post(models.Model):
     title = models.CharField(max_length=200)
     body = models.TextField()
@@ -12,6 +13,6 @@ class Post(models.Model):
         return self.title
 
     class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Post'
-        verbose_name_plural = 'Posts'
+        ordering = ["-created_at"]
+        verbose_name = "Post"
+        verbose_name_plural = "Posts"
