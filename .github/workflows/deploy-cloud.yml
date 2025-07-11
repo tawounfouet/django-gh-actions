@@ -1,0 +1,135 @@
+name: Deploy to DigitalOcean Cloud
+
+on:
+  push:
+    branches: [ 'main' ]
+  pull_request:
+    branches: [ 'main' ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install flake8 coverage
+
+    - name: Lint with flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Run tests with coverage
+      run: |
+        coverage run --source='.' manage.py test
+        coverage report --show-missing
+
+  deploy:
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Extract commit info
+      id: commit
+      run: |
+        echo "hash=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+        echo "message=$(git log --format=%B -n 1 $GITHUB_SHA | head -n 1)" >> $GITHUB_OUTPUT
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Add server to known hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to DigitalOcean server
+      env:
+        SSH_HOST: ${{ secrets.SSH_HOST }}
+        SSH_USER: ${{ secrets.SSH_USER }}
+        COMMIT_HASH: ${{ steps.commit.outputs.hash }}
+        COMMIT_MESSAGE: ${{ steps.commit.outputs.message }}
+      run: |
+        echo "🚀 Starting deployment to DigitalOcean server..."
+        echo "📍 Server: $SSH_HOST"
+        echo "👤 User: $SSH_USER"
+        echo "📝 Commit: $COMMIT_HASH - $COMMIT_MESSAGE"
+        
+        ssh $SSH_USER@$SSH_HOST << 'ENDSSH'
+          set -e
+          
+          echo "📂 Navigating to application directory..."
+          cd /var/www/django-app/app
+          
+          echo "📥 Pulling latest changes..."
+          git fetch origin
+          git reset --hard origin/main
+          
+          echo "🐍 Activating virtual environment..."
+          source /var/www/django-app/venv/bin/activate
+          
+          echo "📦 Installing/updating dependencies..."
+          pip install -r requirements.txt
+          
+          echo "🔄 Running database migrations..."
+          python manage.py migrate --noinput
+          
+          echo "📁 Collecting static files..."
+          python manage.py collectstatic --noinput
+          
+          echo "🔄 Restarting application services..."
+          sudo supervisorctl restart django-app
+          sudo systemctl reload nginx
+          
+          echo "✅ Deployment completed successfully!"
+          echo "🌐 Application available at: http://157.245.79.172"
+          
+          # Vérification de santé
+          sleep 5
+          if curl -f http://localhost:8000 > /dev/null 2>&1; then
+            echo "🟢 Health check passed - Application is running"
+          else
+            echo "🔴 Health check failed - Please check logs"
+            exit 1
+          fi
+        ENDSSH
+        
+        echo "🎉 Deployment to DigitalOcean completed successfully!"
+
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Deployment successful! 🚀"
+          echo "🌐 Your Django app is live at: http://157.245.79.172"
+        else
+          echo "❌ Deployment failed! 😞"
+          echo "📝 Please check the logs above for error details"
+        fi
